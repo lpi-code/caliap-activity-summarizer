@@ -1,6 +1,6 @@
 """Caliap Activity Summarizer package."""
 
-__app_name__ = "caliapactivitysummarizer"
+__app_name__ = "calisum"
 __version__ = "0.1.0"
 
 (

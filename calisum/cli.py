@@ -1,13 +1,10 @@
-""" Command line interface for the caliapactivitysummarizer package. """
+""" Command line interface for the calisum package. """
 
 import argparse
-import tqdm # Used to show progress bars
-import asyncio
 from openai import OpenAI
-import json
 from getpass import getpass
-from caliapactivitysummarizer import PARSING_ERROR, SCRAPING_ERROR, __app_name__, __version__
-from caliapactivitysummarizer.scrapper import LoginError, ParsingError, Scrapper, COOKIE_KEY
+from calisum import PARSING_ERROR, SCRAPING_ERROR, __app_name__, __version__
+from calisum.scrapper import LoginError, ParsingError, Scrapper, COOKIE_KEY
 
 
 def show_version():
@@ -128,15 +125,8 @@ async def main():
                 else:
                     print(single_text)
             else:
-                llm_url = args.custom_llm
-                if llm_url is None or args.jan_ai:
-                    llm_url = "http://localhost:1337/v1"
-                print("Requesting the LLM page...")
-                openai = OpenAI(api_key="sk-1ZQ7Z2")
-                openai.base_url = llm_url
-                list_of_model_available = openai.models
-                print(list_of_model_available)
-                response = openai.request()
+                print("TODO: Summarize the data.")
+                raise NotImplementedError
     except LoginError as e:
         if args.verbose:
             print(f"Error while logging in: {e}")
