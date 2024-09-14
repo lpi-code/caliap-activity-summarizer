@@ -22,3 +22,4 @@ Homepage = "https://github.com/lpi-code/calisum"
 Issues = "https://github.com/lpi-code/calisum/issues"
 
 [tool.hatch.build.targets.wheel]
+packages = ["calisum"]
