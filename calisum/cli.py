@@ -101,6 +101,12 @@ def setup_parser():
         "--model-id",
         help="OpenAI form model id (eg: mistral-ins-7b-q4)"
     )
+    llm.add_argument(
+        "-g",
+        "--global-summary",
+        help="Do a global summary of individual activity (works only if original output is not selected)",
+        action="store_true"
+    )
     return parser
     
 def dict_to_menu(input_dicts : list[dict[str, str]]) -> dict[str,str]:
@@ -153,6 +159,9 @@ async def main():
         if args.cookie is None:
             print("Please provide a cookie for authentication or use email and password.")
             exit(PARSING_ERROR)
+    if args.original_output and args.global_summary:
+        print("--original-output and --global-summary are mutually exclusive.")
+        exit(PARSING_ERROR)
     try:
         async with Scraper(
             url=args.url_to_scrape,
@@ -207,6 +216,10 @@ async def main():
                         else:
                             await summarizer.set_llm_id(args.model_id)
                     texts = await summarizer.summarize_activities(activities_dict_to_items(activities_dict))
+                    if args.global_summary:
+                        if args.verbose:
+                            print("Summarizing globally")
+                        await summarizer.summarize_global(texts)
                     if args.json:
                         text = json.dumps(texts, indent=3)
                     else:

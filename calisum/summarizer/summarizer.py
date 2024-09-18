@@ -14,6 +14,9 @@ DEFAULT_JANAI_API_ENDPOINT = 'http://localhost:1337/v1'
 SUMMY_SENTENCE_OUTPUT = 2 # Number of sentences to return per activity
 DUMMY_TOKEN = "NOTATOKEN"
 INDIVIDIUAL_PROMPT = "Résume cette activité ci-dessous en quelques phrases essentielles : En quoi consiste grossièrement la tache et qu'est ce qu'elle m'a apportée ?"
+SEPARATOR = '\n___\n'
+GLOBAL_PROMPT= f"Fait un résumé cohérent de l'ensemble de ces activités (celles si son séparées par '{SEPARATOR}' et classé par ordre chronologique). Déduit une évolution et prend du recul par rapport à celles-ci"
+
 
 class SummarizerException(Exception):
     pass
@@ -51,7 +54,7 @@ class Summarizer:
                 base_url=self.url
             )
         self._func_dict = {
-            Models.SUMY : self._sum_sumy,
+            Models.SUMY : self.__sum_sumy,
             Models.CHATGPT: self.__sum_llm,
             Models.JANAI: self.__sum_llm,
             Models.CUSTOM: self.__sum_llm
@@ -129,7 +132,7 @@ class Summarizer:
         """
         return self._func_dict[self.model](text)
 
-    async def _sum_sumy(self, text : str) -> str:
+    async def __sum_sumy(self, text : str, nb_of_sentence: int = SUMMY_SENTENCE_OUTPUT) -> str:
         """Summarize with summy
 
         Args:
@@ -139,10 +142,10 @@ class Summarizer:
             str: Summary
         """
         parser = PlaintextParser.from_string(text, self.tokenizer)
-        summarizer = self.summarizer(parser.document, SUMMY_SENTENCE_OUTPUT)
+        summarizer = self.summarizer(parser.document, nb_of_sentence)
         return''.join([str(sentence) for sentence in summarizer])
 
-    async def __sum_llm(self, text : str) -> str:
+    async def __sum_llm(self, text : str, prompt: str = INDIVIDIUAL_PROMPT) -> str:
         """Summarize using llm requires a model id
         will fail if llm_id is not defined
 
@@ -157,7 +160,22 @@ class Summarizer:
 
         payload = {
             'role' : 'user',
-            'content' : INDIVIDIUAL_PROMPT + text
+            'content' : prompt + ' ' + text
         }
         response = await self.llm.chat.completions.create(messages=[payload], model=self.llm_id)
         return response.to_dict()['choices'][0]['message']['content']
+
+    async def summarize_global(self, text : list[str]) -> str:
+        """Summarize a list of texts globally
+
+        Args:
+            text (list[str]): List of texts to summarize
+
+        Returns:
+            str: Summarized text
+        """
+        merged_text = SEPARATOR.join(text)
+        if self.model == Models.SUMY:
+            return await self.__sum_sumy(merged_text, len(text)//5 + 1)
+        else :
+            return await self.__sum_llm(merged_text, GLOBAL_PROMPT)
