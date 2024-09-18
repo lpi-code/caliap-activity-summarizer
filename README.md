@@ -1,4 +1,4 @@
-# calisum - A caliap activity scrapper and summarizer
+# calisum - A caliap activity scraper and summarizer
 
 This is a simple Python script that scraps Caliap and allow to you tu summarize your activity using the LLM of your choice.
 

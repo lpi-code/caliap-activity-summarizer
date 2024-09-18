@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "calisum"
-version = "0.1.2"
+version = "1.0.0"
 authors = [
   { name="Loïc Piernas", email="lpi-code@piernas.fr" },
 ]
-description = "A scrapper and summarizer for caliap"
+description = "A scraper and summarizer for caliap"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
@@ -23,3 +23,9 @@ Issues = "https://github.com/lpi-code/calisum/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["calisum"]
+
+[project.scripts]
+calisum = "calisum.__main__:main"
+
+[tool.hatch.build.target.sdist.force-include]
+"./calisum" = "calisum"

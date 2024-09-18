@@ -1,11 +1,21 @@
 """ Command line interface for the calisum package. """
 
 import argparse
-from openai import OpenAI
+import json
+import bullet
 from getpass import getpass
-from calisum import PARSING_ERROR, SCRAPING_ERROR, __app_name__, __version__
-from calisum.scrapper import LoginError, ParsingError, Scrapper, COOKIE_KEY
 
+import tabulate
+from calisum import PARSING_ERROR, SCRAPING_ERROR, __app_name__, __version__
+from calisum.scraper import LoginError, ParsingError, Scraper, COOKIE_KEY
+from calisum.summarizer import Summarizer, Models
+from calisum.util import activities_dict_to_plain_text, activities_dict_to_items
+
+KEYS_SHOWS_LLM_PICK_MENU = [
+    "id",
+    "name",
+    "version"
+]
 
 def show_version():
     """Print the version of the package."""
@@ -33,6 +43,17 @@ def setup_parser():
         "--output",
         help="Output file to save the summary to. default to stdout "
     )
+    parser.add_argument(
+        "-o",
+        "--original-output",
+        action="store_true",
+        help="Output the original data instead of the summary.")
+    parser.add_argument(
+        "-j",
+        "--json",
+        action="store_true",
+        help='Output the result as json'
+    )
 
     scraper = parser.add_argument_group("Scraper options")
 
@@ -58,25 +79,54 @@ def setup_parser():
         "--cookie",
         help=f"Cookie to use for authentication ({COOKIE_KEY}). Mutually exclusive with --email and --password."
     )
-    scraper.add_argument(
-        "-o",
-        "--original-output",
-        action="store_true",
-        help="Output the original data instead of the summary.")
-
     llm = parser.add_argument_group("LLM options")
     llm.add_argument(
-        "--custom-llm",
-        help="URL to the LLM page open api endpoint."
+        "-l",
+        "--llm-url",
+        help="URL to the LLM page open api endpoint (compatible with openai api standard)."
     )
     llm.add_argument(
+        "-t",
+        "--llm-token",
+        help="LLM token (usefull with openai)"
+    )
+    llm.add_argument(
+        "-n",
         "--jan-ai",
         action="store_true",
-        help="Use localhost jan-ai."
+        help="Use localhost default jan-ai config."
     )
-    
+    llm.add_argument(
+        "-m",
+        "--model-id",
+        help="OpenAI form model id (eg: mistral-ins-7b-q4)"
+    )
     return parser
     
+def dict_to_menu(input_dicts : list[dict[str, str]]) -> dict[str,str]:
+    """Shows a menu in stdout to pick one value of the dict
+
+    Args:
+        input_dict (list): list of dict 
+
+    Returns:
+        dict: Selected dictionnary
+    """
+    table = tabulate.tabulate(input_dicts, headers='keys')
+    table_lines = table.split('\n')
+    prompt = str.join("\n", table_lines[:2])
+    picker = bullet.Bullet(choices=table_lines[2:], bullet="•", prompt=str.join("\n", table_lines[:2]), return_index=True)
+    print(prompt)
+    choice = picker.launch()[1] # Grab index from returned tuple
+    return input_dicts[choice]
+    
+    
+def strip_values(input_dicts : dict) -> dict:
+    new_dict = {}
+    for key in input_dicts:
+        if key in KEYS_SHOWS_LLM_PICK_MENU:
+            new_dict[key] = input_dicts[key]
+    return new_dict
 
 
 async def main():
@@ -89,8 +139,10 @@ async def main():
     elif args.url_to_scrape is None:
         print("Please provide a URL to scrape.")
         print("Use --help for more information.")
-        return
-
+        return 
+    elif args.jan_ai and args.llm_url:
+        print("You cannot use both --jan-ai and --llm_url")
+        exit(PARSING_ERROR)
     if args.email:
         """Email authentication."""
         password = args.password
@@ -102,31 +154,67 @@ async def main():
             print("Please provide a cookie for authentication or use email and password.")
             exit(PARSING_ERROR)
     try:
-        async with Scrapper(
+        async with Scraper(
             url=args.url_to_scrape,
             email=args.email,
             password=password,
             cookie=args.cookie,
             verbose=args.verbose
-        ) as scrapper:
-            print("Scraping the data...")
-            activities_dict = await scrapper.get_all_activity()
-            single_activity_list = []
-            for activity_list in activities_dict.values():
-                single_activity_list.extend(activity_list)
-            single_text = ""
-            for activity in single_activity_list:
-                activity_text = f"{activity['title']}\n\tGoal: {activity['goal']}\n\tResults: {activity['results']}\n\tIssue_encountered: {activity['issue_encountered']}\n\tSkills mastered: {activity['skills']}\n\tFacts: {activity['facts']}\n"
-                single_text += activity_text
+        ) as scraper:
+            if args.verbose:
+                print("Scraping the data...")
+            activities_dict = await scraper.get_all_activity()
             if args.original_output:
+                # No summary
+                text = activities_dict_to_plain_text(activities_dict)
+                if args.json:
+                    text = json.dumps(
+                        activities_dict_to_items(activities_dict),
+                        indent=3
+                    )
                 if args.output:
                     with open(args.output, "w") as file:
-                        file.write(single_text)
+                        file.write(text)
                 else:
-                    print(single_text)
+                    print(text)
+                
             else:
-                print("TODO: Summarize the data.")
-                raise NotImplementedError
+                # Part where we summarize the data
+                model = Models.SUMY
+                model_url = ""
+                model_token = ""
+                text = ""
+                if args.llm_url is not None and args.jan_ai is False:
+                    model = Models.CUSTOM
+                    model_url = args.llm_url
+                    model_token = args.llm_token
+                elif args.jan_ai is True and args.llm_url is None:
+                    model = Models.JANAI
+                elif args.llm_url is not None:
+                    model= Models.CUSTOM
+                async with Summarizer(
+                    verbose=args.verbose,
+                    model=model,
+                    model_url=model_url,
+                    model_token=model_token,
+                    llm_id=args.model_id
+                ) as summarizer:
+                    if model in [Models.JANAI, Models.CUSTOM, Models.CHATGPT] and args.model_id is None:
+                        # Ask using curse
+                        llm_list = [strip_values(model) for model in await summarizer.list_llm_models()]
+                        
+                        llm_selected = dict_to_menu(llm_list)
+                        await summarizer.set_llm_id(llm_selected['id'])
+                    texts = await summarizer.summarize_activities(activities_dict_to_items(activities_dict))
+                    if args.json:
+                        text = json.dumps(texts, indent=3)
+                    else:
+                        text = "\n".join(texts)
+                if args.output:
+                    with open(args.output, "w") as file:
+                        file.write(text)
+                else:
+                    print(text)
     except LoginError as e:
         if args.verbose:
             print(f"Error while logging in: {e}")

@@ -3,7 +3,7 @@ import datetime
 import aiohttp
 import bs4
 import re
-import json
+from tqdm.asyncio import tqdm
 
 COOKIE_KEY = "PHPSESSID"
 LINK_CLASS = "item"
@@ -23,14 +23,15 @@ class LoginError(Exception):
 class ParsingError(Exception):
     pass
 
-class Scrapper:
+class Scraper:
     def __init__(self, 
                  url: str,
                  email: str = None, 
                  password: str = None, 
                  cookie: str = None, 
-                 verbose: str = False):
-        
+                 verbose: bool = False):
+        if not url.startswith('http://') or not url.startswith('https://'):
+            url = f"https://{url}"
         self.url = url
         self.email = email
         self.password = password
@@ -200,7 +201,11 @@ class Scrapper:
         """Get all the activities."""
         activities = await self.list_activities()
         futures = [self.fetch(f"{self.url}{link}") for link in activities.values()]
-        responses = await asyncio.gather(*futures)
+        responses = []
+        if self.verbose:
+            responses = await tqdm.gather(*futures)
+        else:
+            responses = await asyncio.gather(*futures)
         act_text = {}
         for i in range(len(responses)):
             title = list(activities.keys())[i]
