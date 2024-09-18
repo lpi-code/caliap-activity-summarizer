@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-requirements-txt"]
 build-backend = "hatchling.build"
 
 [project]
 name = "calisum"
-version = "1.1.1"
+version = "1.1.2"
 authors = [
   { name="Loïc Piernas", email="lpi-code@piernas.fr" },
 ]
@@ -16,6 +16,10 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)", 
     "Operating System :: OS Independent",
 ]
+dynamic = ["dependencies"]
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]
 
 [project.urls]
 Homepage = "https://github.com/lpi-code/calisum"
