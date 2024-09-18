@@ -197,14 +197,15 @@ async def main():
                     model=model,
                     model_url=model_url,
                     model_token=model_token,
-                    llm_id=args.model_id
                 ) as summarizer:
-                    if model in [Models.JANAI, Models.CUSTOM, Models.CHATGPT] and args.model_id is None:
+                    if model in [Models.JANAI, Models.CUSTOM, Models.CHATGPT]:
                         # Ask using curse
-                        llm_list = [strip_values(model) for model in await summarizer.list_llm_models()]
-                        
-                        llm_selected = dict_to_menu(llm_list)
-                        await summarizer.set_llm_id(llm_selected['id'])
+                        if args.model_id is None:
+                            llm_list = [strip_values(model) for model in await summarizer.list_llm_models()]
+                            llm_selected = dict_to_menu(llm_list)
+                            await summarizer.set_llm_id(llm_selected['id'])
+                        else:
+                            await summarizer.set_llm_id(args.model_id)
                     texts = await summarizer.summarize_activities(activities_dict_to_items(activities_dict))
                     if args.json:
                         text = json.dumps(texts, indent=3)

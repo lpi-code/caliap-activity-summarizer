@@ -27,7 +27,6 @@ class Summarizer:
             model: int = Models.SUMY, 
             model_url : str = "",
             model_token: str = DUMMY_TOKEN,
-            llm_id: str = None
         ):
         """Init the summarizer with the chosen model and settings
 
@@ -36,7 +35,6 @@ class Summarizer:
             model (int, optional): Choose a model from Models enum. Defaults to Models.SUMY.
             model_url (str, optional): Url of the model api to request. Defaults to "".
             model_token (str, optional): Token of the model api to request. Defaults to "".
-            llm_id (str, optional): Model id of the model api to use. Must be defined if type is custom, chatgpt or jan
         """
         self.verbose = verbose
         if model == Models.JANAI and model_url == "":
@@ -51,8 +49,6 @@ class Summarizer:
                 api_key=self.token,
                 base_url=self.url
             )
-            if llm_id is not None:
-                self.set_llm_id(llm_id)
         self._func_dict = {
             Models.SUMY : self._sum_sumy,
             Models.CHATGPT: self.__sum_llm,
