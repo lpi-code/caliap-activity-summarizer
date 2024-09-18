@@ -13,6 +13,7 @@ DEFAULT_LANG = 'fr'
 DEFAULT_JANAI_API_ENDPOINT = 'http://localhost:1337/v1'
 SUMMY_SENTENCE_OUTPUT = 2 # Number of sentences to return per activity
 DUMMY_TOKEN = "NOTATOKEN"
+INDIVIDIUAL_PROMPT = "Résume cette activité ci-dessous en quelques phrases essentielles : En quoi consiste grossièrement la tache et qu'est ce qu'elle m'a apportée ?"
 
 class SummarizerException(Exception):
     pass
@@ -156,7 +157,7 @@ class Summarizer:
 
         payload = {
             'role' : 'user',
-            'content' : 'Résume ceci : ' + text
+            'content' : INDIVIDIUAL_PROMPT + text
         }
         response = await self.llm.chat.completions.create(messages=[payload], model=self.llm_id)
         return response.to_dict()['choices'][0]['message']['content']
