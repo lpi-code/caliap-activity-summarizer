@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "calisum"
-version = "1.0.0"
+version = "1.1.1"
 authors = [
   { name="Loïc Piernas", email="lpi-code@piernas.fr" },
 ]
