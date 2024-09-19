@@ -59,12 +59,12 @@ class Scraper:
         if self.cookie:
             """Cookie authentication."""
             cookie_dict = {COOKIE_KEY: self.cookie}
-            self.session.cookie_jar.update_cookies(cookie_dict, self.url)
+            self.session.cookie_jar.update_cookies(cookie_dict)
             if self.verbose:
                 print("Testing the cookie...")
-            async with self.fetch(f"{self.url}/_connexion") as response:
-                if "Connexion" in response:
-                    raise LoginError("The cookie provided is invalid")
+            response = await self.fetch(f"{self.url}/connexion")
+            if "Connexion" in response:
+                raise LoginError("The cookie provided is invalid")
                 
         elif self.email:
             """Email authentication."""
