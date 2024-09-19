@@ -139,6 +139,7 @@ async def main():
     """Run the command line interface."""
     parser = setup_parser()
     args = parser.parse_args()
+    password=None
     if args.version:
         show_version()
         return
